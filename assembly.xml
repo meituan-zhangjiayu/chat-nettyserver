@@ -1,0 +1,23 @@
+<assembly>
+	<id>bin</id>
+	<formats>
+		<format>zip</format>
+	</formats>
+	<dependencySets>
+		<!-- 依赖包的输出路径 -->
+		<dependencySet>
+			<outputDirectory></outputDirectory>
+		</dependencySet>
+	</dependencySets>
+	<!-- 需要打包的文件集 -->
+	<fileSets>
+		<fileSet>
+			<directory>classes</directory>
+			<outputDirectory>/classes</outputDirectory>
+		</fileSet>
+		<fileSet>
+			<directory>lib</directory>
+			<outputDirectory>/lib</outputDirectory>
+		</fileSet>
+	</fileSets>
+</assembly>
