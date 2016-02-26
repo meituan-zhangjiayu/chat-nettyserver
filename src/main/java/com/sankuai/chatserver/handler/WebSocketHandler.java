@@ -51,15 +51,15 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 			ctx.channel().writeAndFlush(
 					new DefaultHttpResponse(HttpVersion.HTTP_1_1,
 							HttpResponseStatus.BAD_REQUEST));
-			return;
+			ctx.channel().close();
 		}
-
 		// TODO 权限验证
 		// 只接受GET请求
 		if (!request.method().equals(HttpMethod.GET)) {
 			ctx.channel().writeAndFlush(
 					new DefaultHttpResponse(HttpVersion.HTTP_1_1,
 							HttpResponseStatus.METHOD_NOT_ALLOWED));
+			ctx.channel().close();
 		}
 		Map<String, String> params = HttpUtils.getRequestParamsByUri(request
 				.uri());
@@ -80,7 +80,13 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 		if (action.equals("connect")) {
 			WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(
 					getWebSocketLocation(ctx.pipeline(), request), null, true);
-
+			handshaker = wsFactory.newHandshaker(request);
+			if (handshaker == null) {
+				WebSocketServerHandshakerFactory
+						.sendUnsupportedVersionResponse(ctx.channel());
+			} else {
+				handshaker.handshake(ctx.channel(), request);
+			}
 		}
 	}
 
