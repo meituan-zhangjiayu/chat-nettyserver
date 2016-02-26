@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.handler.ssl.SslHandler;
 
@@ -23,10 +24,18 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
 	private final static String WEB_SOCKET_PATH = "websocket";
 
+	private WebSocketServerHandshaker handshaker = null;
+
 	@Override
 	protected void messageReceived(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
-
+		if (msg instanceof FullHttpRequest) {
+			handleWebSocketConnection(ctx, (FullHttpRequest) msg);
+		} else if (msg instanceof WebSocketFrame) {
+			handleWebSocketRequest(ctx, (WebSocketFrame) msg);
+		} else {
+			ctx.fireChannelRead(msg);
+		}
 	}
 
 	/**
@@ -37,6 +46,14 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 	 */
 	private void handleWebSocketConnection(ChannelHandlerContext ctx,
 			FullHttpRequest request) {
+		if (request.decoderResult().isFailure()
+				|| (!"websocket".equals(request.headers().get("Upgrade")))) {
+			ctx.channel().writeAndFlush(
+					new DefaultHttpResponse(HttpVersion.HTTP_1_1,
+							HttpResponseStatus.BAD_REQUEST));
+			return;
+		}
+
 		// TODO 权限验证
 		// 只接受GET请求
 		if (!request.method().equals(HttpMethod.GET)) {
