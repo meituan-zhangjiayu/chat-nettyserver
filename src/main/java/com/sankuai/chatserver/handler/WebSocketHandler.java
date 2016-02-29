@@ -10,6 +10,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
@@ -145,7 +146,9 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
 	private void handleWebSocketRequest(ChannelHandlerContext ctx,
 			WebSocketFrame request) {
-		
+		if(request instanceof CloseWebSocketFrame){
+			
+		}
 	}
 
 	@Override
