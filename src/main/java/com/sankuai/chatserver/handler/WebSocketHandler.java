@@ -1,5 +1,7 @@
 package com.sankuai.chatserver.handler;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -12,17 +14,27 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.util.Map;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
+import com.sankuai.chatserver.datas.ChannelCache;
 import com.sankuai.chatserver.utils.HttpUtils;
 
 public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
+	private final static Logger logger = Logger
+			.getLogger(WebSocketHandler.class);
 
-	private final static String WEB_SOCKET_PATH = "websocket";
+	private final static String WEB_SOCKET_PATH = "/websocket";
+
+	private static final AttributeKey<String> channelIdAttrKey = AttributeKey
+			.valueOf("channelId");
 
 	private WebSocketServerHandshaker handshaker = null;
 
@@ -36,6 +48,21 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 		} else {
 			ctx.fireChannelRead(msg);
 		}
+	}
+
+	@Override
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		logger.info("channel is active,remoteAddress="
+				+ ctx.channel().remoteAddress());
+		super.channelActive(ctx);
+	}
+
+	@Override
+	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+		// 移除缓存
+		ChannelCache
+				.removeFromCache(ctx.channel().attr(channelIdAttrKey).get());
+		super.channelInactive(ctx);
 	}
 
 	/**
@@ -70,7 +97,7 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 			ctx.channel().close();
 		}
 		String action = params.get("action");
-		String channelId = params.get("channelId");
+		final String channelId = params.get("channelId");
 		if (StringUtils.isEmpty(action) || StringUtils.isEmpty(channelId)) {
 			ctx.channel().writeAndFlush(
 					new DefaultHttpResponse(HttpVersion.HTTP_1_1,
@@ -85,7 +112,23 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 				WebSocketServerHandshakerFactory
 						.sendUnsupportedVersionResponse(ctx.channel());
 			} else {
-				handshaker.handshake(ctx.channel(), request);
+				ChannelFuture future = handshaker.handshake(ctx.channel(),
+						request);
+				final Channel channel = ctx.channel();
+				future.addListener(new GenericFutureListener<Future<? super Void>>() {
+
+					public void operationComplete(Future<? super Void> future)
+							throws Exception {
+						if (future.isSuccess()) {
+							// 将channelId和channel的对应关系放到本地缓存
+							channel.attr(channelIdAttrKey).set(channelId);
+							ChannelCache.addToCache(channelId, channel);
+						} else {
+							logger.warn("websocket connect error,channelId="
+									+ channelId);
+						}
+					}
+				});
 			}
 		}
 	}
@@ -96,12 +139,13 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 		if (cp.get(SslHandler.class) != null) {
 			protocol = "wss";
 		}
-		return protocol + "://" + request.headers() + WEB_SOCKET_PATH; // TODO
+		return protocol + "://" + request.headers().getAndConvert("Host")
+				+ WEB_SOCKET_PATH;
 	}
 
 	private void handleWebSocketRequest(ChannelHandlerContext ctx,
 			WebSocketFrame request) {
-
+		
 	}
 
 	@Override
