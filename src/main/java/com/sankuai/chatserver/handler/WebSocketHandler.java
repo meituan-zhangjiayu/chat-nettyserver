@@ -28,6 +28,13 @@ import org.apache.log4j.Logger;
 import com.sankuai.chatserver.datas.ChannelCache;
 import com.sankuai.chatserver.utils.HttpUtils;
 
+/**
+ * 长连接请求的处理器
+ * 
+ * @author zhangjiayu
+ * @date 2016年3月2日
+ * @version 0.1
+ */
 public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 	private final static Logger logger = Logger
 			.getLogger(WebSocketHandler.class);
@@ -146,7 +153,7 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 
 	private void handleWebSocketRequest(ChannelHandlerContext ctx,
 			WebSocketFrame request) {
-		if(request instanceof CloseWebSocketFrame){
+		if (request instanceof CloseWebSocketFrame) {
 			
 		}
 	}
