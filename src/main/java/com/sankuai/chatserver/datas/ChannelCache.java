@@ -23,4 +23,8 @@ public class ChannelCache {
 	public static void removeFromCache(String channelId) {
 		channelCache.remove(channelId);
 	}
+
+	public static Channel getByChannelId(String channelId) {
+		return channelCache.get(channelId);
+	}
 }

@@ -11,6 +11,9 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
@@ -25,6 +28,8 @@ import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.sankuai.chatserver.datas.ChannelCache;
 import com.sankuai.chatserver.utils.HttpUtils;
 
@@ -40,6 +45,8 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 			.getLogger(WebSocketHandler.class);
 
 	private final static String WEB_SOCKET_PATH = "/websocket";
+
+	private final static String TO_CHANNEL_ID_KEY = "toChannelId";
 
 	private static final AttributeKey<String> channelIdAttrKey = AttributeKey
 			.valueOf("channelId");
@@ -152,10 +159,32 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<Object> {
 	}
 
 	private void handleWebSocketRequest(ChannelHandlerContext ctx,
-			WebSocketFrame request) {
-		if (request instanceof CloseWebSocketFrame) {
+			WebSocketFrame frame) {
+		if (frame instanceof CloseWebSocketFrame) {
+			handshaker.close(ctx.channel(),
+					(CloseWebSocketFrame) frame.retain());
+			return;
+		}
+		if (frame instanceof PingWebSocketFrame) {
+			ctx.channel().write(
+					new PongWebSocketFrame(frame.content().retain()));
+			return;
+		}
+		if (!(frame instanceof TextWebSocketFrame)) {
+			throw new UnsupportedOperationException(String.format(
+					"%s frame type not supported!", frame.getClass().getName()));
+		}
+		String request = ((TextWebSocketFrame) frame).text();
+		JSONObject reqObj = JSON.parseObject(request);
+		String toChannelId = reqObj.getString(TO_CHANNEL_ID_KEY);
+		Channel localChannel = ChannelCache.getByChannelId(toChannelId);
+		if (localChannel != null && localChannel.isActive()) {
 			
 		}
+	}
+
+	private void pushMessage(Channel channel, String content) {
+		
 	}
 
 	@Override
